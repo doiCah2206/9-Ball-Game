@@ -1,0 +1,17 @@
+{
+  "name": "nine-ball",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "dependencies": {
+    "@dimforge/rapier2d-compat": "^0.12.0",
+    "pixi.js": "^8.0.0",
+    "howler": "^2.2.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  }
+}
