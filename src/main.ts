@@ -1,243 +1,404 @@
-import { Application, Graphics, Text, TextStyle, Container } from "pixi.js";
+import {
+    Application,
+    Graphics,
+    Text,
+    TextStyle,
+    Container,
+    Sprite,
+    Assets,
+} from "pixi.js";
 import { PhysicsWorld } from "./physics/PhysicsWorld";
 import { TableBody } from "./physics/TableBody";
 import { BallBody } from "./physics/BallBody";
-import {
-    TABLE,
-    RACK_POSITIONS,
-    CUE_BALL_START,
-    BALL,
-    POCKET_POSITIONS,
-} from "./constants";
+import { TABLE, RACK_POSITIONS, CUE_BALL_START, BALL } from "./constants";
 import { ShotController } from "./game/ShotController";
 import { CueSprite } from "./renderer/CueSprite";
+import { GameState, type GameMode } from "./game/GameState";
+import { NineBallRules } from "./game/NineBallRules";
+import { ScreenManager } from "./ui/ScreenManager";
+import { MenuScreen } from "./ui/MenuScreen";
+import { ModeScreen } from "./ui/ModeScreen";
+import { HowToScreen } from "./ui/HowToScreen";
+import { HUDScreen } from "./ui/HUDScreen";
+import { ResultScreen } from "./ui/ResultScreen";
 
 async function main() {
+    const CANVAS_W = window.innerWidth;
+    const CANVAS_H = window.innerHeight;
+
+    const IMG_W = 2560,
+        IMG_H = 1184;
+    const SCALE = CANVAS_W / IMG_W;
+    const IMG_H_RENDER = Math.round(IMG_H * SCALE);
+    const imgOffY = Math.round((CANVAS_H - IMG_H_RENDER) / 2);
+
+    // Tọa độ vùng chơi thực trên ảnh gốc (đo chính xác từ table.png)
+    const PLAY_L = 553,
+        PLAY_T = 283,
+        PLAY_R = 2003,
+        PLAY_B = 1015;
+    const gL = Math.round(PLAY_L * SCALE);
+    const gT = Math.round(PLAY_T * SCALE) + imgOffY;
+    const gW = Math.round((PLAY_R - PLAY_L) * SCALE);
+    const gH = Math.round((PLAY_B - PLAY_T) * SCALE);
+    const psx = gW / TABLE.WIDTH;
+    const psy = gH / TABLE.HEIGHT;
+
     const app = new Application();
     await app.init({
         canvas: document.getElementById("game-canvas") as HTMLCanvasElement,
-        width: TABLE.WIDTH + TABLE.CUSHION * 2 + 200,
-        height: TABLE.HEIGHT + TABLE.CUSHION * 2 + 100,
-        background: 0x1a1a2e,
+        width: CANVAS_W,
+        height: CANVAS_H,
+        background: 0x0d1b2e,
         antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
     });
 
-    const physics = new PhysicsWorld();
-    await physics.init();
+    app.stage.eventMode = "static";
 
-    const table = new TableBody(physics);
+    const screens = new ScreenManager(app);
 
-    const balls: BallBody[] = [];
-    const cueBall = new BallBody(
-        physics,
-        0,
-        CUE_BALL_START.x,
-        CUE_BALL_START.y,
-    );
-    balls.push(cueBall);
-
-    for (const pos of RACK_POSITIONS) {
-        balls.push(new BallBody(physics, pos.ballNum, pos.x, pos.y));
+    function showMenu() {
+        const menu = new MenuScreen(CANVAS_W, CANVAS_H);
+        menu.onPlay = showMode;
+        menu.onHowTo = showHowTo;
+        screens.show(menu);
     }
 
-    physics.onCollision = (handle1, handle2, started) => {
-        if (!started) return;
-        const isPocket1 = table.pocketHandles.has(handle1);
-        const isPocket2 = table.pocketHandles.has(handle2);
-        if (!isPocket1 && !isPocket2) return;
-
-        const ballHandle = isPocket1 ? handle2 : handle1;
-        const pocketed = balls.find((b) => b.handle === ballHandle);
-        if (pocketed && !pocketed.isPocketed) {
-            console.log(`Ball ${pocketed.ballNumber} pocketed!`);
-            pocketed.pocket();
-        }
-    };
-
-    // Container chính — offset bằng CUSHION
-    const gameContainer = new Container();
-    gameContainer.x = TABLE.CUSHION;
-    gameContainer.y = TABLE.CUSHION;
-    app.stage.addChild(gameContainer);
-
-    // --- Cushion (viền nâu gỗ) ---
-    const cushionGfx = new Graphics();
-    cushionGfx
-        .rect(
-            -TABLE.CUSHION,
-            -TABLE.CUSHION,
-            TABLE.WIDTH + TABLE.CUSHION * 2,
-            TABLE.HEIGHT + TABLE.CUSHION * 2,
-        )
-        .fill(0x4a2c0a);
-    gameContainer.addChild(cushionGfx);
-
-    // --- Mặt bàn xanh ---
-    const feltGfx = new Graphics();
-    feltGfx.rect(0, 0, TABLE.WIDTH, TABLE.HEIGHT).fill(0x1f6b3a);
-    gameContainer.addChild(feltGfx);
-
-    // --- 6 lỗ pocket đen ---
-    for (const pos of POCKET_POSITIONS) {
-        const hole = new Graphics();
-        hole.circle(0, 0, pos.r).fill(0x000000); // dùng pos.r
-        hole.x = pos.x;
-        hole.y = pos.y;
-        gameContainer.addChild(hole);
+    function showHowTo() {
+        const hw = new HowToScreen(CANVAS_W, CANVAS_H);
+        hw.onBack = showMenu;
+        screens.show(hw);
     }
 
-    // Head string — đường ngang tại 1/4 bàn tính từ trái
-    const headString = new Graphics();
-    headString
-        .moveTo(TABLE.WIDTH * 0.25, 0)
-        .lineTo(TABLE.WIDTH * 0.25, TABLE.HEIGHT)
-        .stroke({ color: 0x3a9a5a, width: 1, alpha: 0.4 });
-    gameContainer.addChild(headString);
-
-    // Head spot — chấm tròn nhỏ tại tâm vùng break
-    const headSpot = new Graphics();
-    headSpot.circle(TABLE.WIDTH * 0.25, TABLE.HEIGHT * 0.5, 3).fill(0x3a9a5a);
-    gameContainer.addChild(headSpot);
-
-    // --- Màu từng bóng ---
-    const BALL_COLORS: Record<number, number> = {
-        1: 0xf5c518,
-        2: 0x1a3faa,
-        3: 0xcc2200,
-        4: 0x6a0dad,
-        5: 0xe8601c,
-        6: 0x1a7a3c,
-        7: 0x8b0000,
-        8: 0x111111,
-        9: 0xf5c518,
-    };
-
-    // --- Vẽ bóng có màu + số ---
-    const ballGraphics = new Map<number, Graphics>();
-    const ballLabels = new Map<number, Text>();
-
-    for (const ball of balls) {
-        const g = new Graphics();
-
-        if (ball.ballNumber === 0) {
-            // Cue ball trắng
-            g.circle(0, 0, BALL.RADIUS).fill(0xffffff);
-            g.circle(0, 0, BALL.RADIUS).stroke({ color: 0xcccccc, width: 1 });
-        } else {
-            const col = BALL_COLORS[ball.ballNumber] ?? 0xffffff;
-
-            if (ball.ballNumber === 9) {
-                // Bóng 9: sọc vàng
-                g.circle(0, 0, BALL.RADIUS).fill(0xffffff);
-                g.rect(
-                    -BALL.RADIUS,
-                    -BALL.RADIUS * 0.45,
-                    BALL.RADIUS * 2,
-                    BALL.RADIUS * 0.9,
-                ).fill(col);
-                g.circle(0, 0, BALL.RADIUS).stroke({
-                    color: 0xaaaaaa,
-                    width: 0.5,
-                });
-            } else {
-                g.circle(0, 0, BALL.RADIUS).fill(col);
-                g.circle(0, 0, BALL.RADIUS).stroke({
-                    color: 0x000000,
-                    width: 0.5,
-                    alpha: 0.3,
-                });
-            }
-
-            // Vòng trắng nhỏ giữa để đặt số
-            g.circle(0, 0, BALL.RADIUS * 0.45).fill(0xffffff);
-
-            // Số bóng
-            const style = new TextStyle({
-                fontSize: BALL.RADIUS * 0.9,
-                fontWeight: "bold",
-                fill: 0x111111,
-            });
-            const label = new Text({ text: String(ball.ballNumber), style });
-            label.anchor.set(0.5);
-            gameContainer.addChild(label);
-            ballLabels.set(ball.ballNumber, label);
-        }
-
-        gameContainer.addChild(g);
-        ballGraphics.set(ball.ballNumber, g);
+    function showMode() {
+        const ms = new ModeScreen(CANVAS_W, CANVAS_H);
+        ms.onSelect = (mode, p1, p2) => startGame(mode, p1, p2);
+        ms.onBack = showMenu;
+        screens.show(ms);
     }
 
-    // --- Cue sprite ---
-    const cueSprite = new CueSprite();
-    gameContainer.addChild(cueSprite.container);
+    async function startGame(mode: GameMode, p1Name: string, p2Name: string) {
+        screens.hide();
 
-    // --- Shot controller ---
-    const shotController = new ShotController(
-        app.canvas,
-        cueBall,
-        TABLE.CUSHION,
-        TABLE.CUSHION,
-    );
+        const state = new GameState(p1Name, p2Name, mode);
 
-    shotController.onShoot = (angle, power) => {
-        cueBall.applyImpulse(Math.cos(angle) * power, Math.sin(angle) * power);
-    };
+        const physics = new PhysicsWorld();
+        await physics.init();
 
-    // Bắt đầu ở trạng thái aiming
-    shotController.activate();
+        let table = new TableBody(physics);
+        let balls: BallBody[] = [];
+        let cueBall!: BallBody;
 
-    // --- Game loop ---
-    let accumulator = 0;
-    const FIXED_DT = 1 / 60;
+        const rules = new NineBallRules(state);
 
-    app.ticker.add((ticker) => {
-        accumulator += ticker.deltaMS / 1000;
-        while (accumulator >= FIXED_DT) {
-            physics.step();
-            accumulator -= FIXED_DT;
-        }
-
-        for (const ball of balls) {
-            const g = ballGraphics.get(ball.ballNumber);
-            const lbl = ballLabels.get(ball.ballNumber);
-            if (!g) continue;
-            const visible = !ball.isPocketed;
-            g.visible = visible;
-            g.x = ball.x;
-            g.y = ball.y;
-            if (lbl) {
-                lbl.visible = visible;
-                lbl.x = ball.x;
-                lbl.y = ball.y;
-            }
-        }
-
-        // Kiểm tra tất cả bóng đã dừng chưa
-        const allStopped = balls.every((b) => b.isPocketed || !b.isMoving);
-
-        if (allStopped && shotController.getState() === "waiting") {
-            shotController.activate();
-        }
-
-        // Cập nhật cue sprite
-        const state = shotController.getState();
-        const showCue = state === "aiming" || state === "pulling";
-        cueSprite.setVisible(showCue && !cueBall.isPocketed);
-
-        if (showCue) {
-            cueSprite.update(
-                cueBall.x,
-                cueBall.y,
-                shotController.getAimAngle(),
-                shotController.getPullDistance(),
-                shotController.MAX_PULL,
-                TABLE.WIDTH,
-                TABLE.HEIGHT,
+        function spawnBalls() {
+            balls = [];
+            cueBall = new BallBody(
+                physics,
+                0,
+                CUE_BALL_START.x,
+                CUE_BALL_START.y,
             );
+            balls.push(cueBall);
+            for (const pos of RACK_POSITIONS)
+                balls.push(new BallBody(physics, pos.ballNum, pos.x, pos.y));
         }
-    });
 
-    console.log("Nine Ball initialized. Aim, pull, and release to shoot.");
+        spawnBalls();
+
+        // Collision
+        physics.onCollision = (h1, h2, started) => {
+            if (!started) return;
+            const p1 = table.pocketHandles.has(h1);
+            const p2 = table.pocketHandles.has(h2);
+            if (!p1 && !p2) return;
+            const bh = p1 ? h2 : h1;
+            const ball = balls.find((b) => b.handle === bh);
+            if (ball && !ball.isPocketed) {
+                ball.pocket();
+                rules.onBallPocketed(ball.ballNumber);
+                pocketedThisRack.add(ball.ballNumber);
+                // Animate bóng vào thanh bên phải
+                hud.animateBallIn(ball.ballNumber);
+            }
+        };
+
+        // Game container (physics → screen)
+        const gameCt = new Container();
+        gameCt.x = gL;
+        gameCt.y = gT;
+        gameCt.scale.set(psx, psy);
+        app.stage.addChild(gameCt);
+
+        // Ảnh bàn
+        try {
+            await Assets.load("/assets/table.png");
+            const ts = Sprite.from("/assets/table.png");
+            ts.width = CANVAS_W;
+            ts.height = IMG_H_RENDER;
+            ts.y = imgOffY;
+            app.stage.addChildAt(ts, 0);
+        } catch {
+            const fallback = new Graphics();
+            fallback.rect(0, 0, CANVAS_W, CANVAS_H).fill(0x0d1b2e);
+            fallback.rect(gL - 30, gT - 30, gW + 60, gH + 60).fill(0x4a0a6e);
+            fallback.rect(gL, gT, gW, gH).fill(0x1aaa82);
+            app.stage.addChildAt(fallback, 0);
+        }
+
+        // Đường kẻ head string (chỉ vẽ đường thẳng đứng, KHÔNG vẽ vòng tròn)
+        const mark = new Graphics();
+        mark.moveTo(TABLE.WIDTH * 0.25, 0)
+            .lineTo(TABLE.WIDTH * 0.25, TABLE.HEIGHT)
+            .stroke({ color: 0xffffff, width: 1.0 / psx, alpha: 0.1 });
+        gameCt.addChild(mark);
+
+        // Ball colors
+        const COLORS: Record<number, number> = {
+            0: 0xffffff,
+            1: 0xf7c948,
+            2: 0x1e3faa,
+            3: 0xcc2222,
+            4: 0x7b3fa0,
+            5: 0xe8601c,
+            6: 0x1a7a3c,
+            7: 0x7a1a1a,
+            8: 0x111111,
+            9: 0xf7c948,
+        };
+        const ballCts = new Map<number, Container>();
+        const ballLbls = new Map<number, Text>();
+
+        function buildBallGraphics() {
+            ballCts.forEach((bc) => gameCt.removeChild(bc));
+            ballCts.clear();
+            ballLbls.clear();
+
+            for (const ball of balls) {
+                const bc = new Container();
+                const r = BALL.RADIUS;
+                const col = COLORS[ball.ballNumber] ?? 0xffffff;
+                const g = new Graphics();
+
+                if (ball.ballNumber === 0) {
+                    // Cue ball: thêm điểm lệch tâm để thấy xoay
+                    g.circle(0, 0, r).fill(0xf8f8f0);
+                    g.circle(0, 0, r).stroke({ color: 0xd0d0c0, width: 0.8 });
+                    bc.addChild(g);
+                    // Điểm xám lệch tâm — xoay thì thấy nó quay
+                    const dot = new Graphics();
+                    dot.circle(r * 0.5, 0, r * 0.2).fill({
+                        color: 0xaaaaaa,
+                        alpha: 0.7,
+                    });
+                    bc.addChild(dot);
+                } else {
+                    if (ball.ballNumber === 9) {
+                        g.circle(0, 0, r).fill(0xffffff);
+                        bc.addChild(g);
+                        const stripe = new Graphics();
+                        stripe.rect(-r, -r * 0.42, r * 2, r * 0.84).fill(col);
+                        const mask = new Graphics();
+                        mask.circle(0, 0, r).fill(0xffffff);
+                        stripe.mask = mask;
+                        bc.addChild(mask);
+                        bc.addChild(stripe);
+                    } else {
+                        g.circle(0, 0, r).fill(col);
+                        bc.addChild(g);
+                    }
+
+                    // Chấm trắng + số — xoay cùng bóng, có thể mất khỏi tầm nhìn
+                    const dot = new Graphics();
+                    dot.circle(0, 0, r * 0.42).fill(0xffffff);
+                    bc.addChild(dot);
+
+                    const lbl = new Text({
+                        text: String(ball.ballNumber),
+                        style: new TextStyle({
+                            fontSize: r * 0.85,
+                            fontWeight: "bold",
+                            fill: 0x111111,
+                        }),
+                    });
+                    lbl.anchor.set(0.5);
+                    bc.addChild(lbl);
+                    ballLbls.set(ball.ballNumber, lbl);
+
+                    // Highlight phản quang lệch tâm — xoay thì thấy rõ
+                    const hl = new Graphics();
+                    hl.circle(-r * 0.26, -r * 0.26, r * 0.19).fill({
+                        color: 0xffffff,
+                        alpha: 0.5,
+                    });
+                    bc.addChild(hl);
+                }
+
+                gameCt.addChild(bc);
+                ballCts.set(ball.ballNumber, bc);
+            }
+        }
+        buildBallGraphics();
+
+        // Cue
+        const cue = new CueSprite();
+        gameCt.addChild(cue.container);
+
+        // Shot controller
+        let shot = new ShotController(app.canvas, cueBall, gL, gT, psx, psy);
+        shot.onShoot = (angle, power) => {
+            const impulse = power * 2.2; // nhân hệ số để bù damping cao
+            cueBall.applyImpulse(
+                Math.cos(angle) * impulse,
+                Math.sin(angle) * impulse,
+            );
+            rules.resetTurn();
+        };
+        shot.activate();
+
+        // HUD (80px cao, hiển thị lượt chơi)
+        const hud = new HUDScreen(CANVAS_W, 80, state);
+        hud.y = 0;
+        app.stage.addChild(hud);
+        app.stage.addChild(hud.pocketedStrip);
+
+        let pocketedThisRack = new Set<number>();
+        let firstHitDetected = false;
+        let resolving = false;
+
+        const FIXED_DT = 1 / 120;
+        let acc = 0;
+
+        const ticker = app.ticker.add((tk) => {
+            acc += tk.deltaMS / 1000;
+            let steps = 0;
+            while (acc >= FIXED_DT && steps < 4) {
+                physics.step();
+                acc -= FIXED_DT;
+                steps++;
+            }
+            if (acc > FIXED_DT * 4) acc = 0; // xả khi lag đột biến
+
+            // Sync bóng
+            for (const ball of balls) {
+                const bc = ballCts.get(ball.ballNumber);
+                if (!bc) continue;
+                bc.visible = !ball.isPocketed;
+                bc.x = ball.x;
+                bc.y = ball.y;
+
+                ball.tickRoll(FIXED_DT);
+                bc.rotation = ball.rotation; // toàn bộ bóng xoay — số cũng mất khi quay xuống
+
+                const lbl = ballLbls.get(ball.ballNumber);
+                if (lbl) lbl.visible = !ball.isPocketed;
+            }
+
+            // HUD update — truyền thêm lowest để highlight
+            const lowest = rules.getLowestBall(balls);
+            hud.update(state, pocketedThisRack, lowest);
+
+            // Cue
+            const st = shot.getState();
+            const showCue =
+                (st === "aiming" || st === "pulling") && !cueBall.isPocketed;
+            cue.setVisible(showCue);
+            if (showCue) {
+                cue.update(
+                    cueBall.x,
+                    cueBall.y,
+                    shot.getAimAngle(),
+                    shot.getPullDistance(),
+                    shot.MAX_PULL,
+                    TABLE.WIDTH,
+                    TABLE.HEIGHT,
+                );
+            }
+
+            // Phát hiện bóng đầu tiên cue chạm
+            if (st === "waiting" && !firstHitDetected && cueBall.isMoving) {
+                for (const b of balls) {
+                    if (b.ballNumber === 0 || b.isPocketed) continue;
+                    if (b.isMoving) {
+                        rules.onFirstHit(b.ballNumber, lowest);
+                        firstHitDetected = true;
+                        break;
+                    }
+                }
+            }
+
+            // Khi tất cả dừng
+            const allStopped = balls.every((b) => b.isPocketed || !b.isMoving);
+            if (allStopped && st === "waiting" && !resolving) {
+                resolving = true;
+                firstHitDetected = false;
+
+                const result = rules.resolveTurn(balls);
+
+                if (result.nineBallWin) {
+                    if (state.isMatchOver) {
+                        ticker.stop();
+                        app.stage.removeChild(hud);
+                        const rs = new ResultScreen(
+                            CANVAS_W,
+                            CANVAS_H,
+                            state.winner!.name,
+                            state.player1.score,
+                            state.player2.score,
+                            state.player1.name,
+                            state.player2.name,
+                        );
+                        rs.onPlayAgain = () => {
+                            app.stage.removeChild(rs);
+                            app.stage.removeChild(gameCt);
+                            startGame(mode, p1Name, p2Name);
+                        };
+                        rs.onMenu = () => {
+                            app.stage.removeChild(rs);
+                            app.stage.removeChild(gameCt);
+                            showMenu();
+                        };
+                        app.stage.addChild(rs);
+                    } else {
+                        resetRack();
+                    }
+                } else {
+                    if (result.foul || result.switchTurn) {
+                        state.switchTurn();
+                    }
+                    rules.resetTurn();
+                    shot.activate();
+                }
+                resolving = false;
+            }
+        });
+
+        function resetRack() {
+            balls.forEach((b) => physics.removeRigidBody(b.body));
+            pocketedThisRack = new Set();
+            hud.clearPocketed();
+            rules.resetTurn();
+            spawnBalls();
+            buildBallGraphics();
+
+            shot.destroy();
+            shot = new ShotController(app.canvas, cueBall, gL, gT, psx, psy);
+            shot.onShoot = (angle, power) => {
+                const impulse = power * 2.2; // nhân hệ số để bù damping cao
+                cueBall.applyImpulse(
+                    Math.cos(angle) * impulse,
+                    Math.sin(angle) * impulse,
+                );
+                rules.resetTurn();
+            };
+            shot.activate();
+        }
+    }
+
+    showMenu();
+    window.addEventListener("resize", () => location.reload());
 }
 
 main().catch(console.error);
