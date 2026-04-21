@@ -56,9 +56,11 @@ export function LegacyGameCanvas() {
 
         const state = (location.state ?? {}) as {
             mode?: LegacyMode;
+            winsNeeded?: number;
             config?: { mode?: LegacyMode; winsNeeded?: number };
         };
         const mode: LegacyMode = state.config?.mode ?? state.mode ?? 'vs-ai';
+        const winsNeeded: number = state.winsNeeded ?? state.config?.winsNeeded ?? 5;
 
         const setupGlobals = () => {
             const w = window as any;
@@ -104,6 +106,9 @@ export function LegacyGameCanvas() {
                 bestTime: Number(window.localStorage.getItem('bestTime') ?? 0),
                 numGames: Number(window.localStorage.getItem('numGames') ?? 0),
                 aiRating: 3,
+                winsNeeded: winsNeeded,
+                p1Wins: 0,
+                p2Wins: 0,
             };
         };
 
@@ -228,7 +233,14 @@ export function LegacyGameCanvas() {
             };
 
             w.Point = w.Phaser.Point;
-            w.game = new w.Phaser.Game(1920, 1080, w.Phaser.CANVAS, 'mygame');
+            w.game = new w.Phaser.Game({
+                width: 1920,
+                height: 1080,
+                renderer: w.Phaser.CANVAS,
+                parent: 'mygame',
+                scaleMode: w.Phaser.ScaleManager.SHOW_ALL,
+            });
+
             w.game.state.add('mainMenu', mainMenuState);
             w.game.state.add('load', w.loadState);
             w.game.state.add('play', w.playState);
@@ -255,14 +267,20 @@ export function LegacyGameCanvas() {
 
     return (
         <div
-        // style={{
-        //     width: '100vw',
-        //     height: '100vh',
-        //     background: '#0d0d1a',
-        //     overflow: 'hidden',
-        // }}
+            style={{
+                width: '100vw',
+                height: '100vh',
+                background: '#0d0d1a',
+                overflow: 'hidden',
+            }}
         >
-            <div id="mygame" ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            <div id="mygame" ref={containerRef} style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }} />
         </div>
     );
 }

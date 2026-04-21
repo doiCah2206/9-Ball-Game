@@ -190,13 +190,6 @@ playState.update = function () {
         }
     }
     function r() {
-        // Save lowest active ball BEFORE shot for foul checking
-        var _lowest = 99;
-        for (var _bi = 1; _bi < a.ballArray.length; _bi++) {
-            if (1 == a.ballArray[_bi].active && a.ballArray[_bi].id < _lowest)
-                _lowest = a.ballArray[_bi].id;
-        }
-        a.preShot_lowestId = _lowest;
         if (
             (Sound.Play("cueHit", 1),
                 (a.ballArray[0].mover.visible = !1),
@@ -251,24 +244,51 @@ playState.update = function () {
                     }
                 })(),
                 (function () {
-                    // 9-ball: cue ball must contact the lowest-numbered object ball.
-                    // Validate by checking all cue-ball ball-contacts in this shot.
+                    // 9-ball: cue ball must contact the lowest-numbered object ball FIRST.
                     if (0 == a.fouled) {
-                        // Use the lowest ball ID saved BEFORE the shot,
-                        // not after (potted balls are already deactivated).
-                        var lowestId = a.preShot_lowestId || 99;
-                        var contacts = a.ballArray[0].contactArray;
-                        var touchedLowest = !1;
-                        for (var e = 0; e < contacts.length; e++) {
-                            var t = contacts[e];
-                            if ("ball" == t.type) {
-                                var hitId = t.target ? t.target.id : -1;
-                                // 9-ball rule: FIRST ball contacted must be the lowest
-                                touchedLowest = (hitId == lowestId);
-                                break;
+                        // 1) Determine the required ball id. Prefer the snapshot
+                        //    taken at the START of this turn (a.requiredBallId).
+                        //    Falling back to scanning active balls here is WRONG
+                        //    once the shot has ended, because the ball we just
+                        //    legally potted has already been set active=0.
+                        var lowestId = a.requiredBallId;
+                        if (!lowestId || lowestId < 1 || lowestId > 9) {
+                            // Fallback only: no snapshot available.
+                            lowestId = 99;
+                            for (var bi = 1; bi < a.ballArray.length; bi++) {
+                                if (1 == a.ballArray[bi].active && a.ballArray[bi].id < lowestId)
+                                    lowestId = a.ballArray[bi].id;
                             }
                         }
-                        if (99 != lowestId && 0 == touchedLowest) {
+
+                        // 2) Helper: pull a ball id out of a contact entry no matter
+                        //    how the physics engine labels it (.target / .ball / .id).
+                        function _contactBallId(c) {
+                            if (!c) return -1;
+                            if (c.target && typeof c.target.id !== "undefined") return c.target.id;
+                            if (c.ball && typeof c.ball.id !== "undefined") return c.ball.id;
+                            if (typeof c.id !== "undefined") return c.id;
+                            return -1;
+                        }
+
+                        // 3) Find the FIRST ball the cue ball touched.
+                        //    Use ONLY cue-ball contactArray. Cross-ball fallbacks
+                        //    can reorder simultaneous contacts and cause false fouls.
+                        var firstHitId = -1;
+                        var cueContacts = a.ballArray[0].contactArray || [];
+                        for (var e = 0; e < cueContacts.length; e++) {
+                            if ("ball" == cueContacts[e].type) {
+                                firstHitId = _contactBallId(cueContacts[e]);
+                                if (firstHitId !== -1) break;
+                            }
+                        }
+
+                        // 4) Only foul when we both know the required ball AND we
+                        //    positively identified a first contact that is NOT it.
+                        //    If we could not determine the first contact at all
+                        //    (firstHitId === -1) we do NOT foul — better to miss a
+                        //    real foul than to wrongly penalise a correct shot.
+                        if (99 != lowestId && firstHitId !== -1 && firstHitId != lowestId) {
                             (a.fouled = !0),
                                 (a.foulMessage = "struck the wrong ball first"),
                                 (a.foulDisplay1 = "MISS"),
@@ -617,65 +637,69 @@ playState.update = function () {
             ((preventQuit = !0), game.time.events.add(500, h, this)));
     }
     function c(e = !1) {
-        if (
-            (e && (a.winner = "p1"),
-                window.famobi_analytics.trackScreen("SCREEN_LEVELRESULT"),
-                (a.gameOverPanel.visible = !0),
-                "p1" == a.winner &&
-                1 == projectInfo.mode &&
-                (a.playerWin.visible = !0),
-                "p2" == a.winner &&
-                1 == projectInfo.mode &&
-                ((a.aiWin.visible = !0), (projectInfo.score = 0)),
-                2 == projectInfo.mode)
-        ) {
-            ((a.p1Icon.visible = !0), (a.p2Icon.visible = !0));
-            let e = -100;
-            ("p1" == a.winner
-                ? ((a.p2Icon.rosette.visible = !1),
-                    (a.p2Icon.scale = new Phaser.Point(0.4, 0.4)),
-                    (a.p2Icon.y = e + 12.8),
-                    (a.p1Icon.y = e))
-                : ((a.p1Icon.rosette.visible = !1),
-                    (a.p1Icon.scale = new Phaser.Point(0.4, 0.4)),
-                    (a.p2Icon.y = e),
-                    (a.p1Icon.y = e + 12.8)),
-                (a.gameOverWindow.visible = !1),
-                (a.GOscoreIcon.visible = !1),
-                (a.GOhighScoreIcon.visible = !1),
-                (a.gameOverPanel.text1.visible = !1),
-                (a.gameOverPanel.text2.visible = !1));
+        e && (a.winner = "p1");
+
+        // --- Match scoring ---
+        var winsNeeded = projectInfo.winsNeeded || 5;
+        if ("p1" == a.winner) {
+            projectInfo.p1Wins = (projectInfo.p1Wins || 0) + 1;
+        } else if ("p2" == a.winner) {
+            projectInfo.p2Wins = (projectInfo.p2Wins || 0) + 1;
         }
-        if (
-            ((a.gameOverPanel.text1.text = String(projectInfo.score)),
-                (a.gameOverPanel.text2.text = String(projectInfo.bestScore)),
+        // Update score HUD
+        a.p1WinText && (a.p1WinText.text = String(projectInfo.p1Wins || 0));
+        a.p2WinText && (a.p2WinText.text = String(projectInfo.p2Wins || 0));
+
+        var matchOver = (projectInfo.p1Wins >= winsNeeded) || (projectInfo.p2Wins >= winsNeeded);
+
+        if (matchOver) {
+            // Match is over - show final result
+            window.famobi_analytics.trackScreen("SCREEN_LEVELRESULT");
+            (a.gameOverPanel.visible = !0);
+            if ("p1" == a.winner && 1 == projectInfo.mode)
+                (a.playerWin.visible = !0);
+            if ("p2" == a.winner && 1 == projectInfo.mode)
+                ((a.aiWin.visible = !0), (projectInfo.score = 0));
+            if (2 == projectInfo.mode) {
+                ((a.p1Icon.visible = !0), (a.p2Icon.visible = !0));
+                var iconY = -100;
+                ("p1" == a.winner
+                    ? ((a.p2Icon.rosette.visible = !1),
+                        (a.p2Icon.scale = new Phaser.Point(0.4, 0.4)),
+                        (a.p2Icon.y = iconY + 12.8),
+                        (a.p1Icon.y = iconY))
+                    : ((a.p1Icon.rosette.visible = !1),
+                        (a.p1Icon.scale = new Phaser.Point(0.4, 0.4)),
+                        (a.p2Icon.y = iconY),
+                        (a.p1Icon.y = iconY + 12.8)));
+                (a.gameOverWindow.visible = !1),
+                    (a.GOscoreIcon.visible = !1),
+                    (a.GOhighScoreIcon.visible = !1),
+                    (a.gameOverPanel.text1.visible = !1),
+                    (a.gameOverPanel.text2.visible = !1);
+            }
+            (a.gameOverPanel.text1.text = String(projectInfo.p1Wins)),
+                (a.gameOverPanel.text2.text = String(projectInfo.p2Wins)),
                 (a.GOaiLevel.visible = !1),
                 (a.GOclockIcon.visible = !1),
                 (a.gameOverPanel.text3.visible = !1),
-                (a.gameOverPanel.text4.visible = !1),
-                "p1" == a.winner && 1 == projectInfo.mode)
-        )
-            ((a.quitButton2.visible = !1),
-                (a.replayButton.visible = !1),
-                (function () {
-                    (Sound.Play("cheer", 1),
-                        game.time.events.add(2e3, u, this));
-                })());
-        else {
+                (a.gameOverPanel.text4.visible = !1);
             ((a.quitButton2.visible = !1), (a.replayButton.visible = !1));
-            var t = function () {
+            var showButtons = function () {
                 ((a.quitButton2.visible = !0),
                     (a.replayButton.visible = !0),
                     (a.quitButton2.input.enabled = !0),
                     (a.replayButton.input.enabled = !0));
             };
-            game.time.events.add(
-                2e3,
-                function () {
-                    m().then(t, t);
-                },
-                this,
-            );
+            game.time.events.add(2e3, function () {
+                m().then(showButtons, showButtons);
+            }, this);
+        } else {
+            // Match continues - auto restart next game after delay
+            Sound.Play("cheer", 0.5);
+            game.time.events.add(2e3, function () {
+                h();
+            }, this);
         }
     }
     function u() {
@@ -775,7 +799,12 @@ playState.update = function () {
         );
     }
     function h() {
-        ((projectInfo.lastBreaker = a.turn), game.state.start("play"));
+        ((projectInfo.lastBreaker = a.turn),
+            // Reset match scores if match was over
+            (projectInfo.p1Wins >= (projectInfo.winsNeeded || 5) ||
+                projectInfo.p2Wins >= (projectInfo.winsNeeded || 5)) &&
+            ((projectInfo.p1Wins = 0), (projectInfo.p2Wins = 0)),
+            game.state.start("play"));
     }
     function v() {
         (game.device.touch && ((a.powerBarMask.x = 0), (a.powerBarMask.y = 0)),
@@ -787,7 +816,7 @@ playState.update = function () {
             (a.cueTweenComplete = !1),
             (0 != a.ballPotted && 1 != a.fouled) ||
             ((a.multiplier = 1),
-                (a.multiplierText.text = "x" + a.multiplier)),
+                a.multiplierText && (a.multiplierText.text = "x" + a.multiplier)),
             (a.ballPotted = !1),
             (a.fouled = !1),
             (a.firstTouch = !1),
@@ -800,6 +829,11 @@ playState.update = function () {
             (a.settingPower = !1),
             0 == a.trial &&
             ((a.foundCalculatedShots = !1), (a.foundRandomShots = !1)));
+        for (var lowestIdAtTurnStart = 99, li = 1; li < a.ballArray.length; li++)
+            1 == a.ballArray[li].active &&
+                a.ballArray[li].id < lowestIdAtTurnStart &&
+                (lowestIdAtTurnStart = a.ballArray[li].id);
+        a.requiredBallId = lowestIdAtTurnStart <= 9 ? lowestIdAtTurnStart : 0;
         for (var e = 0; e < a.ballArray.length; e++)
             ((a.ballArray[e].lastCollisionObject = null),
                 (a.ballArray[e].firstContact = !1),
@@ -987,13 +1021,6 @@ playState.update = function () {
         }
     }
     function x(e, t, i, n) {
-        // Save lowest active ball BEFORE shot for foul checking
-        var _lowest = 99;
-        for (var _bi = 1; _bi < a.ballArray.length; _bi++) {
-            if (1 == a.ballArray[_bi].active && a.ballArray[_bi].id < _lowest)
-                _lowest = a.ballArray[_bi].id;
-        }
-        a.preShot_lowestId = _lowest;
         if (
             "p2" == a.turn &&
             (a.shotNum++,
@@ -2326,7 +2353,7 @@ playState.update = function () {
                 a.phys.updatePhysics(),
                 renderScreen()),
             0 == projectInfo.levelComplete &&
-            ((a.scoreText.text = projectInfo.score),
+            (a.scoreText && (a.scoreText.text = projectInfo.score),
                 1 == projectInfo.mode && "p1" == a.turn && updateTimer()),
             (a.debugText.text = game.time.fps),
             1 == a.gameOver &&

@@ -7,7 +7,7 @@ function updateTimer() {
             i = Math.ceil(e % 60),
             n = i.toString();
         (i < 10 && (n = "0" + i.toString()),
-            (t.timerText.text = a.toString() + ":" + n));
+            t.timerText && (t.timerText.text = a.toString() + ":" + n));
     }
 }
 function startTimer() {
@@ -16,9 +16,9 @@ function startTimer() {
 function endTimer() {
     var t = playState.gameInfo;
     1 == t.gameRunning &&
-        ((t.timerText.scale = new Point(0.5, 0.5)),
-        (t.timerText.text = ""),
-        (t.gameOver = !0));
+        (t.timerText && (t.timerText.scale = new Point(0.5, 0.5),
+            t.timerText.text = ""),
+            (t.gameOver = !0));
 }
 function increaseTime() {
     playState.gameInfo.timeRemaining += 600;

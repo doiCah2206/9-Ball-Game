@@ -3,10 +3,10 @@ import { useNavigate } from "react-router";
 import { GameLayout, UserPill } from "./GameLayout";
 
 const menuItems = [
-  { label: "Chơi với máy", icon: Gamepad2, path: "/choose-mode" },
-  { label: "Chơi với người", icon: Users, path: "/choose-mode" },
-  { label: "Luyện tập", icon: Zap, path: null },
-  { label: "Hướng dẫn chơi", icon: CircleHelp, path: "/how-to-play" },
+  { label: "Chơi với máy", icon: Gamepad2, path: "/choose-mode", mode: "vs-ai" as const },
+  { label: "Chơi với người", icon: Users, path: "/choose-mode", mode: "vs-player" as const },
+  { label: "Luyện tập", icon: Zap, path: null, mode: null },
+  { label: "Hướng dẫn chơi", icon: CircleHelp, path: "/how-to-play", mode: null },
 ];
 
 export function MainMenu() {
@@ -66,7 +66,7 @@ export function MainMenu() {
           {menuItems.map((item) => (
             <button
               key={item.label}
-              onClick={() => item.path && navigate(item.path)}
+              onClick={() => item.path && navigate(item.path, { state: { mode: item.mode } })}
               className="w-full flex items-center px-6 rounded-full cursor-pointer"
               style={{
                 height: "58px",

@@ -5,35 +5,35 @@ function onContact(e) {
         l = a.ball,
         i = new Object();
     ((i.position = l.position),
-    (i.targetPosition = a.target.position),
-    (i.velocity = a.ballVelocity),
-    (i.collisionType = a.collisionType),
-    (i.screw = l.screw),
-    "ball" == a.collisionType &&
+        (i.targetPosition = a.target.position),
+        (i.velocity = a.ballVelocity),
+        (i.collisionType = a.collisionType),
+        (i.screw = l.screw),
+        "ball" == a.collisionType &&
         ((i.target = a.target),
-        (i.targetVelocity = a.targetVelocity),
-        (i.deltaScrew = a.deltaScrew)),
-    (i.type = a.collisionType),
-    "ball" == a.collisionType) &&
+            (i.targetVelocity = a.targetVelocity),
+            (i.deltaScrew = a.deltaScrew)),
+        (i.type = a.collisionType),
+        "ball" == a.collisionType) &&
         (l.contactArray.push(i),
-        0 == o.trial &&
+            0 == o.trial &&
             ((t = i.velocity.minus(i.targetVelocity).magnitude / 6e3) > 1 &&
                 (t = 1),
-            Sound.Play("ballHit", t)));
+                Sound.Play("ballHit", t)));
     ("line" != a.collisionType && "vertex" != a.collisionType) ||
         (l.contactArray.push(i),
-        0 == o.trial &&
+            0 == o.trial &&
             ((t = a.normalVelocity.magnitude / 3e3) > 2 && (t = 2),
-            Sound.Play("cushionHit", t)));
+                Sound.Play("cushionHit", t)));
     "pocket" == a.collisionType &&
         ((l.active = !1),
-        (l.velocity = new Vector2D(0, 0)),
-        l.contactArray.push(i),
-        0 == o.trial &&
+            (l.velocity = new Vector2D(0, 0)),
+            l.contactArray.push(i),
+            0 == o.trial &&
             (playPocketSound(a),
-            playPocketAnimation(a),
-            projectInfo.tutorial || awardBonuses(a)),
-        0 == l.id ? (o.scratched = !0) : o.ballsRemaining--);
+                playPocketAnimation(a),
+                projectInfo.tutorial || awardBonuses(a)),
+            0 == l.id ? (o.scratched = !0) : o.ballsRemaining--);
 }
 function playPocketSound(e) {
     var t = e.speed / 5e3;
@@ -48,22 +48,22 @@ function awardBonuses(e) {
             checkLevelComplete(),
             (t.ballPotted = !0),
             1 == projectInfo.mode &&
-                "p1" == t.turn &&
-                (createBonusText(
-                    0,
-                    String(10 * t.multiplier),
-                    "font6",
-                    o.dropPosition.x * t.physScale,
-                    o.dropPosition.y * t.physScale,
-                    56,
-                    !1,
-                ),
+            "p1" == t.turn &&
+            (createBonusText(
+                0,
+                String(10 * t.multiplier),
+                "font6",
+                o.dropPosition.x * t.physScale,
+                o.dropPosition.y * t.physScale,
+                56,
+                !1,
+            ),
                 game.time.events.add(
                     1.5 * Phaser.Timer.SECOND,
                     function () {
                         if (
                             ((projectInfo.score += 10 * t.multiplier),
-                            projectInfo.score > t.bestScore)
+                                projectInfo.score > t.bestScore)
                         ) {
                             t.bestScore = projectInfo.score;
                             try {
@@ -71,12 +71,14 @@ function awardBonuses(e) {
                                     "bestScore",
                                     t.bestScore,
                                 );
-                            } catch (e) {}
+                            } catch (e) { }
                         }
                         (t.multiplier++,
-                            (t.multiplierText.text = "x" + t.multiplier));
-                        var e = game.add.tween(t.multiplierText);
-                        (e.from({ size: 42 }, 2e3), e.start());
+                            t.multiplierText && (t.multiplierText.text = "x" + t.multiplier));
+                        if (t.multiplierText) {
+                            var e = game.add.tween(t.multiplierText);
+                            (e.from({ size: 42 }, 2e3), e.start());
+                        }
                     },
                     this,
                 )));
@@ -130,17 +132,17 @@ function playPocketAnimation(e) {
         ),
             0 != o.id
                 ? c.onComplete.add(function () {
-                      !(function (e) {
-                          0 != e.id &&
-                              (t.tunnelCanvas.removeChild(e.mc),
-                              (e.pocketTweenComplete = !0));
-                      })(o);
-                  }, this)
+                    !(function (e) {
+                        0 != e.id &&
+                            (t.tunnelCanvas.removeChild(e.mc),
+                                (e.pocketTweenComplete = !0));
+                    })(o);
+                }, this)
                 : c.onComplete.add(function () {
-                      (t.tunnelCanvas.removeChild(o.mc),
-                          t.ballCanvas.addChild(o.mc),
-                          (o.pocketTweenComplete = !0),
-                          (o.mc.visible = !1));
-                  }, this));
+                    (t.tunnelCanvas.removeChild(o.mc),
+                        t.ballCanvas.addChild(o.mc),
+                        (o.pocketTweenComplete = !0),
+                        (o.mc.visible = !1));
+                }, this));
     }
 }

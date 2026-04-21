@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { GameLayout, UserPill } from "./GameLayout";
 
 const modes = [
@@ -25,6 +25,8 @@ const modes = [
 export function ChooseMode() {
   const [selected, setSelected] = useState(5);
   const navigate = useNavigate();
+  const location = useLocation();
+  const gameMode = (location.state as any)?.mode ?? "vs-ai";
 
   return (
     <GameLayout>
@@ -168,7 +170,7 @@ export function ChooseMode() {
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "#1A1D1F";
                     }}
-                    onClick={() => navigate("/game", { state: { winsNeeded: mode.id } })}
+                    onClick={() => navigate("/game", { state: { mode: gameMode, winsNeeded: mode.id } })}
                   >
                     Vào phòng
                   </button>

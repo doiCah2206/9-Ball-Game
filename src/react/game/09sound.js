@@ -22,9 +22,11 @@ var Sound = new (function () {
             game.sound.masterGain.connect(game.sound.context.destination));
     }),
     (Sound.checkAudioContext = function () {
+        if (typeof game === "undefined" || !game || !game.sound || !game.sound.context) return;
         this.isSuspended() && this.startCheckingSuspended();
         const e = game.sound.context.currentTime;
         setTimeout(() => {
+            if (typeof game === "undefined" || !game || !game.sound || !game.sound.context) return;
             const t = game.sound.context.currentTime;
             e === t && this.createNewAudioContext();
         }, 1e3);
@@ -39,7 +41,7 @@ var Sound = new (function () {
     }),
     (Sound.isSuspended = function () {
         return (
-            game.sound.usingWebAudio && "suspended" === game.sound.context.state
+            typeof game !== "undefined" && game && game.sound && game.sound.usingWebAudio && "suspended" === game.sound.context.state
         );
     }),
-    setInterval(Sound.checkAudioContext.bind(Sound), 1e3));
+    setInterval(function () { if (typeof game !== "undefined" && game && game.sound) Sound.checkAudioContext(); }, 1e3));
