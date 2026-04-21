@@ -2,10 +2,10 @@
 import { Vec2 } from "./Vec2";
 
 export class Pt {
-  constructor(public x: number, public y: number) {}
+  constructor(public x: number, public y: number) { }
   equals(p: Pt) { return this.x === p.x && this.y === p.y; }
   static interpolate(a: Pt, b: Pt, t: number) {
-    return new Pt(fix((1-t)*a.x + t*b.x), fix((1-t)*a.y + t*b.y));
+    return new Pt(fix((1 - t) * a.x + t * b.x), fix((1 - t) * a.y + t * b.y));
   }
 }
 
@@ -39,14 +39,14 @@ export const BilliardMaths = {
     const res: CircleIntersect = { inside: false, tangent: false, intersects: false, enter: null, exit: null };
     const dx = p2.x - p1.x, dy = p2.y - p1.y;
     const fx = p1.x - center.x, fy = p1.y - center.y;
-    const A = dx*dx + dy*dy;
-    const B = 2*(fx*dx + fy*dy);
-    const C = fx*fx + fy*fy - r*r;
-    let disc = fix(B*B - 4*A*C);
+    const A = dx * dx + dy * dy;
+    const B = 2 * (fx * dx + fy * dy);
+    const C = fx * fx + fy * fy - r * r;
+    let disc = fix(B * B - 4 * A * C);
     if (disc <= 0) { res.inside = false; return res; }
     disc = fix(Math.sqrt(disc));
-    const t1 = fix((-B - disc) / (2*A));
-    const t2 = fix((-B + disc) / (2*A));
+    const t1 = fix((-B - disc) / (2 * A));
+    const t2 = fix((-B + disc) / (2 * A));
     if ((t1 < 0 && t2 < 0) || (t1 > 1 && t2 > 1)) {
       res.inside = !(t1 < 0 && t2 < 0 || t1 > 1 && t2 > 1);
       return res;

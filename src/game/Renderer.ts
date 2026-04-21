@@ -35,10 +35,10 @@ export class Renderer {
 
     // Wood grain
     const woodGrad = g.createLinearGradient(TABLE.x, TABLE.y, TABLE.x, TABLE.y + TABLE.h);
-    woodGrad.addColorStop(0,   C.tableWoodLt);
+    woodGrad.addColorStop(0, C.tableWoodLt);
     woodGrad.addColorStop(0.3, C.tableWood);
     woodGrad.addColorStop(0.7, C.tableWood);
-    woodGrad.addColorStop(1,   C.tableWoodLt);
+    woodGrad.addColorStop(1, C.tableWoodLt);
     g.fillStyle = woodGrad;
     this._roundRect(TABLE.x, TABLE.y, TABLE.w, TABLE.h, 14);
     g.fill();
@@ -48,9 +48,9 @@ export class Renderer {
 
     // Felt
     const feltGrad = g.createLinearGradient(FELT.x, FELT.y, FELT.x, FELT.y + FELT.h);
-    feltGrad.addColorStop(0,   '#0f7a60');
+    feltGrad.addColorStop(0, '#0f7a60');
     feltGrad.addColorStop(0.5, C.tableFelt);
-    feltGrad.addColorStop(1,   '#0c5e49');
+    feltGrad.addColorStop(1, '#0c5e49');
     g.fillStyle = feltGrad;
     g.fillRect(FELT.x, FELT.y, FELT.w, FELT.h);
 
@@ -149,11 +149,11 @@ export class Renderer {
     const positions = [
       // Top rail
       { x: FELT.x + FELT.w * 0.25, y: TABLE.y + WOOD / 2 },
-      { x: FELT.x + FELT.w * 0.5,  y: TABLE.y + WOOD / 2 },
+      { x: FELT.x + FELT.w * 0.5, y: TABLE.y + WOOD / 2 },
       { x: FELT.x + FELT.w * 0.75, y: TABLE.y + WOOD / 2 },
       // Bottom rail
       { x: FELT.x + FELT.w * 0.25, y: TABLE.y + TABLE.h - WOOD / 2 },
-      { x: FELT.x + FELT.w * 0.5,  y: TABLE.y + TABLE.h - WOOD / 2 },
+      { x: FELT.x + FELT.w * 0.5, y: TABLE.y + TABLE.h - WOOD / 2 },
       { x: FELT.x + FELT.w * 0.75, y: TABLE.y + TABLE.h - WOOD / 2 },
     ];
     for (const d of positions) {
@@ -430,9 +430,9 @@ export class Renderer {
 
     // Turn indicator
     const turnMsg = state.phase === 'ball-in-hand' ? '⚐ Đặt bi cái tự do' :
-                    state.phase === 'game-over' ? '🏆 Kết thúc!' :
-                    state.config.mode === 'vs-ai' && state.currentPlayer === 1 ? '🤖 Máy đang suy nghĩ...' :
-                    `Lượt: ${state.currentPlayer === 0 ? state.config.player1Name : state.config.player2Name}`;
+      state.phase === 'game-over' ? '🏆 Kết thúc!' :
+        state.config.mode === 'vs-ai' && state.currentPlayer === 1 ? '🤖 Máy đang suy nghĩ...' :
+          `Lượt: ${state.currentPlayer === 0 ? state.config.player1Name : state.config.player2Name}`;
     g.font = '13px Arial';
     g.fillStyle = C.gray;
     g.textAlign = 'center';

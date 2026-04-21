@@ -1,12 +1,12 @@
 // Custom billiard physics — no external library
 import { FELT, BALL_R, CORNER_CUT, SIDE_HALF } from './constants';
 
-const DT          = 1 / 60;       // seconds per step() call
-const SUB_STEPS   = 4;             // sub-steps per step for tunnelling prevention
-const RES_BALL    = 0.96;          // ball-ball restitution
+const DT = 1 / 60;       // seconds per step() call
+const SUB_STEPS = 4;             // sub-steps per step for tunnelling prevention
+const RES_BALL = 0.96;          // ball-ball restitution
 const RES_CUSHION = 0.72;          // ball-cushion restitution
-const FRICTION    = 2.2;           // rolling friction coefficient (1/s)
-const STOP_V      = 1.5;           // px/s threshold to call settled
+const FRICTION = 2.2;           // rolling friction coefficient (1/s)
+const STOP_V = 1.5;           // px/s threshold to call settled
 
 interface Ball {
   x: number; y: number;
@@ -17,7 +17,7 @@ export class PhysicsEngine {
   private balls = new Map<number, Ball>();
 
   // ── No-op init (was async with Rapier2D) ──
-  init() {}
+  init() { }
 
   addBall(id: number, bx: number, by: number) {
     this.balls.set(id, { x: bx, y: by, vx: 0, vy: 0 });
@@ -30,7 +30,7 @@ export class PhysicsEngine {
   setBallPos(id: number, bx: number, by: number) {
     const b = this.balls.get(id);
     if (b) { b.x = bx; b.y = by; b.vx = 0; b.vy = 0; }
-    else     this.balls.set(id, { x: bx, y: by, vx: 0, vy: 0 });
+    else this.balls.set(id, { x: bx, y: by, vx: 0, vy: 0 });
   }
 
   applyImpulse(id: number, vx: number, vy: number) {
@@ -95,7 +95,7 @@ export class PhysicsEngine {
     const md = BALL_R * 2;
     if (d2 >= md * md || d2 === 0) return;
 
-    const d  = Math.sqrt(d2);
+    const d = Math.sqrt(d2);
     const nx = dx / d, ny = dy / d;
     const ov = (md - d) * 0.5;
     a.x -= nx * ov; a.y -= ny * ov;
@@ -112,7 +112,7 @@ export class PhysicsEngine {
     const { x: fx, y: fy, w: fw, h: fh } = FELT;
     const cc = CORNER_CUT, sh = SIDE_HALF;
     const cx = fx + fw / 2;
-    const R  = BALL_R, e = RES_CUSHION;
+    const R = BALL_R, e = RES_CUSHION;
 
     // Left wall
     if (b.x < fx + R && b.y > fy + cc && b.y < fy + fh - cc) {

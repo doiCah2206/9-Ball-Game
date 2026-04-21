@@ -11,7 +11,7 @@ export interface BilliardBall {
 // Physics constants
 const BALL_DIAM = BALL_RADIUS * 2;
 const RESTITUTION_CUSHION = 0.78;
-const RESTITUTION_BALL    = 0.95;
+const RESTITUTION_BALL = 0.95;
 const ROLLING_DECAY = 1.6;   // velocity loss per second (fraction)
 const STOP_THR = 5;          // px/s below which ball is considered stopped
 const SPACING = BALL_RADIUS * 2.15;
@@ -25,7 +25,7 @@ export class BilliardPhysics {
   cueBall: BilliardBall | null = null;
 
   onPocketed: ((ball: BilliardBall) => void) | null = null;
-  onCueFoul:  (() => void) | null = null;
+  onCueFoul: (() => void) | null = null;
 
   setup() {
     this.balls = [];
@@ -156,7 +156,7 @@ export class BilliardPhysics {
     // Top wall — two segments around side pocket
     if (y < R) {
       if ((x > CORNER_GAP && x < W / 2 - SIDE_GAP) ||
-          (x > W / 2 + SIDE_GAP && x < W - CORNER_GAP)) {
+        (x > W / 2 + SIDE_GAP && x < W - CORNER_GAP)) {
         b.pos.y = R;
         if (b.vel.y < 0) b.vel.y = -b.vel.y * e;
       }
@@ -164,7 +164,7 @@ export class BilliardPhysics {
     // Bottom wall
     if (y > H - R) {
       if ((x > CORNER_GAP && x < W / 2 - SIDE_GAP) ||
-          (x > W / 2 + SIDE_GAP && x < W - CORNER_GAP)) {
+        (x > W / 2 + SIDE_GAP && x < W - CORNER_GAP)) {
         b.pos.y = H - R;
         if (b.vel.y > 0) b.vel.y = -b.vel.y * e;
       }
@@ -202,5 +202,5 @@ export class BilliardPhysics {
     return this.balls.filter(b => b.pocketed).map(b => b.num);
   }
 
-  destroy() {}
+  destroy() { }
 }

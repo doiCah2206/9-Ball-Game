@@ -11,7 +11,7 @@ export class PracticeScreen {
   private mx = 0;
   private my = 0;
   private selectedBallId = 1;
-  private exitBtn  = { x: CW - 55,  y: TABLE.y - 36, w: 40, h: 28 };
+  private exitBtn = { x: CW - 55, y: TABLE.y - 36, w: 40, h: 28 };
   private resetBtn = { x: CW - 158, y: TABLE.y - 36, w: 96, h: 28 };
   private ballBtns: { x: number; y: number; id: number }[] = [];
 
@@ -139,7 +139,7 @@ export class PracticeScreen {
 
     // Reset button
     const rHov = this.mx >= this.resetBtn.x && this.mx <= this.resetBtn.x + this.resetBtn.w &&
-                 this.my >= this.resetBtn.y && this.my <= this.resetBtn.y + this.resetBtn.h;
+      this.my >= this.resetBtn.y && this.my <= this.resetBtn.y + this.resetBtn.h;
     g.fillStyle = rHov ? '#2a2a50' : C.cardBg;
     R._roundRect(this.resetBtn.x, this.resetBtn.y, this.resetBtn.w, this.resetBtn.h, 5);
     g.fill();
@@ -151,7 +151,7 @@ export class PracticeScreen {
 
     // Exit button
     const xHov = this.mx >= this.exitBtn.x && this.mx <= this.exitBtn.x + this.exitBtn.w &&
-                 this.my >= this.exitBtn.y && this.my <= this.exitBtn.y + this.exitBtn.h;
+      this.my >= this.exitBtn.y && this.my <= this.exitBtn.y + this.exitBtn.h;
     g.fillStyle = xHov ? '#aa2222' : '#882222';
     R._roundRect(this.exitBtn.x, this.exitBtn.y, this.exitBtn.w, this.exitBtn.h, 5);
     g.fill();

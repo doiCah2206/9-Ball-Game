@@ -21,7 +21,7 @@ export class Vec2 {
   get magnitude() { return fix(Math.sqrt(this._x * this._x + this._y * this._y)); }
   get magnitudeSquared() { return fix(this._x * this._x + this._y * this._y); }
 
-  plus(v: Vec2)  { return new Vec2(this._x + v._x, this._y + v._y); }
+  plus(v: Vec2) { return new Vec2(this._x + v._x, this._y + v._y); }
   minus(v: Vec2) { return new Vec2(this._x - v._x, this._y - v._y); }
   times(s: number) { return new Vec2(this._x * s, this._y * s); }
   invert() { return new Vec2(-this._x, -this._y); }
@@ -35,7 +35,7 @@ export class Vec2 {
   }
 
   getRightNormal() { return new Vec2(this._y, -this._x); }
-  getLeftNormal()  { return new Vec2(-this._y, this._x); }
+  getLeftNormal() { return new Vec2(-this._y, this._x); }
 
   angleBetweenCos(v: Vec2) {
     const d = this.magnitude * v.magnitude;

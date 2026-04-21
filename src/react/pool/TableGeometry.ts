@@ -23,24 +23,24 @@ export const SIDE_GAP = SIDE_POCKET_R * 2.3;
 // Normal vectors point INTO the table (toward the centre).
 export const CUSHIONS: Cushion[] = [
   // Top-left
-  { x1: CORNER_GAP,       y1: R, x2: W / 2 - SIDE_GAP, y2: R, nx: 0,  ny: 1  },
+  { x1: CORNER_GAP, y1: R, x2: W / 2 - SIDE_GAP, y2: R, nx: 0, ny: 1 },
   // Top-right
-  { x1: W / 2 + SIDE_GAP, y1: R, x2: W - CORNER_GAP,   y2: R, nx: 0,  ny: 1  },
+  { x1: W / 2 + SIDE_GAP, y1: R, x2: W - CORNER_GAP, y2: R, nx: 0, ny: 1 },
   // Bottom-left
-  { x1: CORNER_GAP,       y1: H - R, x2: W / 2 - SIDE_GAP, y2: H - R, nx: 0,  ny: -1 },
+  { x1: CORNER_GAP, y1: H - R, x2: W / 2 - SIDE_GAP, y2: H - R, nx: 0, ny: -1 },
   // Bottom-right
-  { x1: W / 2 + SIDE_GAP, y1: H - R, x2: W - CORNER_GAP,   y2: H - R, nx: 0,  ny: -1 },
+  { x1: W / 2 + SIDE_GAP, y1: H - R, x2: W - CORNER_GAP, y2: H - R, nx: 0, ny: -1 },
   // Left
-  { x1: R, y1: CORNER_GAP, x2: R, y2: H - CORNER_GAP, nx: 1,  ny: 0  },
+  { x1: R, y1: CORNER_GAP, x2: R, y2: H - CORNER_GAP, nx: 1, ny: 0 },
   // Right
-  { x1: W - R, y1: CORNER_GAP, x2: W - R, y2: H - CORNER_GAP, nx: -1, ny: 0  },
+  { x1: W - R, y1: CORNER_GAP, x2: W - R, y2: H - CORNER_GAP, nx: -1, ny: 0 },
 ];
 
 export const POCKETS: Pocket[] = [
-  { x: 0,   y: 0,   r: CORNER_POCKET_R },  // top-left
-  { x: W/2, y: 0,   r: SIDE_POCKET_R   },  // top-centre
-  { x: W,   y: 0,   r: CORNER_POCKET_R },  // top-right
-  { x: 0,   y: H,   r: CORNER_POCKET_R },  // bot-left
-  { x: W/2, y: H,   r: SIDE_POCKET_R   },  // bot-centre
-  { x: W,   y: H,   r: CORNER_POCKET_R },  // bot-right
+  { x: 0, y: 0, r: CORNER_POCKET_R },  // top-left
+  { x: W / 2, y: 0, r: SIDE_POCKET_R },  // top-centre
+  { x: W, y: 0, r: CORNER_POCKET_R },  // top-right
+  { x: 0, y: H, r: CORNER_POCKET_R },  // bot-left
+  { x: W / 2, y: H, r: SIDE_POCKET_R },  // bot-centre
+  { x: W, y: H, r: CORNER_POCKET_R },  // bot-right
 ];

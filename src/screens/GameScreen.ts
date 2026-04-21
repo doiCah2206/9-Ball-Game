@@ -18,7 +18,7 @@ export class GameScreen {
   private menuBtn: GSButton;
   // game-over button rects (must match Renderer.drawGameOver layout)
   private readonly goReplayBtn = { x: CW / 2 - 170, y: CH / 2 + 60, w: 160, h: 44 };
-  private readonly goExitBtn   = { x: CW / 2 + 10,  y: CH / 2 + 60, w: 160, h: 44 };
+  private readonly goExitBtn = { x: CW / 2 + 10, y: CH / 2 + 60, w: 160, h: 44 };
 
   constructor(renderer: Renderer, engine: GameEngine) {
     this.renderer = renderer;
