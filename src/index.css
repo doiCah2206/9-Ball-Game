@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+@keyframes game-loading-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.game-loading-shimmer {
+  background: linear-gradient(90deg, #1e1e38 25%, #f5a623 50%, #1e1e38 75%);
+  background-size: 200% 100%;
+  animation: game-loading-shimmer 1.4s linear infinite;
+}
