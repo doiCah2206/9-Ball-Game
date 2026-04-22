@@ -302,18 +302,51 @@ playState.update = function () {
                     }
                 })(),
                 (function () {
-                    // 9-ball: cue ball must contact the lowest-numbered ball FIRST.
+                    // 9-ball: cue ball must contact the lowest-numbered object ball FIRST.
                     if (0 == a.fouled) {
-                        var lowestId = a.requiredBallId || 1;
-                        var contacts = a.ballArray[0].contactArray;
-                        var firstBallId = -1;
-                        for (var e = 0; e < contacts.length; e++) {
-                            if ("ball" == contacts[e].type) {
-                                firstBallId = contacts[e].target ? contacts[e].target.id : -1;
-                                break;
+                        // 1) Determine the required ball id. Prefer the snapshot
+                        //    taken at the START of this turn (a.requiredBallId).
+                        //    Falling back to scanning active balls here is WRONG
+                        //    once the shot has ended, because the ball we just
+                        //    legally potted has already been set active=0.
+                        var lowestId = a.requiredBallId;
+                        if (!lowestId || lowestId < 1 || lowestId > 9) {
+                            // Fallback only: no snapshot available.
+                            lowestId = 99;
+                            for (var bi = 1; bi < a.ballArray.length; bi++) {
+                                if (1 == a.ballArray[bi].active && a.ballArray[bi].id < lowestId)
+                                    lowestId = a.ballArray[bi].id;
                             }
                         }
-                        if (99 != lowestId && -1 != firstBallId && firstBallId != lowestId) {
+
+                        // 2) Helper: pull a ball id out of a contact entry no matter
+                        //    how the physics engine labels it (.target / .ball / .id).
+                        function _contactBallId(c) {
+                            if (!c) return -1;
+                            if (c.target && typeof c.target.id !== "undefined") return c.target.id;
+                            if (c.ball && typeof c.ball.id !== "undefined") return c.ball.id;
+                            if (typeof c.id !== "undefined") return c.id;
+                            return -1;
+                        }
+
+                        // 3) Find the FIRST ball the cue ball touched.
+                        //    Use ONLY cue-ball contactArray. Cross-ball fallbacks
+                        //    can reorder simultaneous contacts and cause false fouls.
+                        var firstHitId = -1;
+                        var cueContacts = a.ballArray[0].contactArray || [];
+                        for (var e = 0; e < cueContacts.length; e++) {
+                            if ("ball" == cueContacts[e].type) {
+                                firstHitId = _contactBallId(cueContacts[e]);
+                                if (firstHitId !== -1) break;
+                            }
+                        }
+
+                        // 4) Only foul when we both know the required ball AND we
+                        //    positively identified a first contact that is NOT it.
+                        //    If we could not determine the first contact at all
+                        //    (firstHitId === -1) we do NOT foul — better to miss a
+                        //    real foul than to wrongly penalise a correct shot.
+                        if (99 != lowestId && firstHitId !== -1 && firstHitId != lowestId) {
                             (a.fouled = !0),
                                 (a.foulMessage = "struck the wrong ball first"),
                                 (a.foulDisplay1 = "MISS"),
@@ -339,7 +372,7 @@ playState.update = function () {
                                 a.trial;
                                 a.ballsPotted++;
                                 // 9-ball win condition and 9-ball spotting on foul
-                                if (9 == n.id && "practice" != a.mode && 3 != projectInfo.mode) {
+                                if (9 == n.id && "practice" != a.mode) {
                                     if (0 == a.fouled) {
                                         1 == a.trial
                                             ? (a.shotRating = 2)
@@ -502,17 +535,8 @@ playState.update = function () {
                 (1 == a.fouled
                     ? 0 == a.trial
                         ? ((a.cueBallInHand = !0),
-                            (function () {
-                                var foulKey = "p1" == a.turn ? "p1ConsecutiveFouls" : "p2ConsecutiveFouls";
-                                a[foulKey] = (a[foulKey] || 0) + 1;
-                                if (a.shotNum > 1 && a[foulKey] >= 3) {
-                                    (a.gameOver = !0), (a.winner = "p1" == a.turn ? "p2" : "p1");
-                                    a[foulKey] = 0;
-                                }
-                                updateFoulDisplay();
-                            })(),
                             1 == a.shotNum &&
-                            ((gameRunning = !1), (a.rerack = !0)),
+                            ((a.gameRunning = !1), (a.rerack = !0)),
                             (function () {
                                 {
                                     function e() {
@@ -626,11 +650,6 @@ playState.update = function () {
                         : ((a.shotRating = -1), p())
                     : (0 == a.trial &&
                         ((a.cueBallInHand = !1),
-                            (function () {
-                                var cleanKey = "p1" == a.turn ? "p1ConsecutiveFouls" : "p2ConsecutiveFouls";
-                                a[cleanKey] = 0;
-                                updateFoulDisplay();
-                            })(),
                             (projectInfo.lastBreaker = "none"),
                             (a.rerack = !1)),
                         a.fouled ||
@@ -671,7 +690,7 @@ playState.update = function () {
                             }
                         })();
                     })(),
-                        (3 == projectInfo.mode || (0 != a.turnExtended && 1 != a.fouled)) ||
+                        (0 != a.turnExtended && 1 != a.fouled) ||
                         ("p2" == a.turn
                             ? ((a.turn = "p1"),
                                 (a.turnArrow1.frame = 1),
@@ -685,85 +704,71 @@ playState.update = function () {
             1 == a.rerack &&
             ((preventQuit = !0), game.time.events.add(500, h, this)));
     }
-    function updateFoulDisplay() {
-        var p1Fouls = a.p1ConsecutiveFouls || 0;
-        var p2Fouls = a.p2ConsecutiveFouls || 0;
-        if (a.p1FoulText) {
-            if (p1Fouls == 0) {
-                a.p1FoulText.text = "";
-            } else if (p1Fouls == 1) {
-                a.p1FoulText.style.fill = "#FF9100";
-                a.p1FoulText.text = "●";
-            } else {
-                a.p1FoulText.style.fill = "#FF4400";
-                a.p1FoulText.text = "●●";
-            }
-        }
-        if (a.p2FoulText) {
-            if (p2Fouls == 0) {
-                a.p2FoulText.text = "";
-            } else if (p2Fouls == 1) {
-                a.p2FoulText.style.fill = "#FF9100";
-                a.p2FoulText.text = "●";
-            } else {
-                a.p2FoulText.style.fill = "#FF4400";
-                a.p2FoulText.text = "●●";
-            }
-        }
-    }
     function c(e = !1) {
-        if (a.cFired) return;
-        a.cFired = !0;
-        if (e) a.winner = "p1";
+        e && (a.winner = "p1");
 
-        if ("p1" == a.winner) projectInfo.p1Wins = (projectInfo.p1Wins || 0) + 1;
-        else if ("p2" == a.winner) projectInfo.p2Wins = (projectInfo.p2Wins || 0) + 1;
-
-        var winsNeeded = projectInfo.winsNeeded || 3;
-        if (projectInfo.p1Wins < winsNeeded && projectInfo.p2Wins < winsNeeded) {
-            projectInfo.lastBreaker = "p1" == a.winner ? "p2" : "p1";
-            Sound.Play("cheer", 1);
-            game.time.events.add(1500, function () { game.state.start("play"); }, this);
-            return;
+        // --- Match scoring ---
+        var winsNeeded = projectInfo.winsNeeded || 5;
+        if ("p1" == a.winner) {
+            projectInfo.p1Wins = (projectInfo.p1Wins || 0) + 1;
+        } else if ("p2" == a.winner) {
+            projectInfo.p2Wins = (projectInfo.p2Wins || 0) + 1;
         }
+        // Update score HUD
+        a.p1WinText && (a.p1WinText.text = String(projectInfo.p1Wins || 0));
+        a.p2WinText && (a.p2WinText.text = String(projectInfo.p2Wins || 0));
 
-        (window.famobi_analytics.trackScreen("SCREEN_LEVELRESULT"),
-            (a.gameOverPanel.visible = !0),
-            (a.playerWin.visible = !1),
-            (a.aiWin.visible = !1),
-            (a.p1Icon.visible = !1),
-            (a.p2Icon.visible = !1),
-            (a.gameOverWindow.visible = !1),
-            (a.GOscoreIcon.visible = !1),
-            (a.GOhighScoreIcon.visible = !1),
-            (a.gameOverPanel.text1.visible = !1),
-            (a.gameOverPanel.text2.visible = !1),
-            (a.GOaiLevel.visible = !1),
-            (a.GOclockIcon.visible = !1),
-            (a.gameOverPanel.text3.visible = !1),
-            (a.gameOverPanel.text4.visible = !1),
-            (a.matchResultText.visible = !0),
-            1 == projectInfo.mode && "p1" == a.winner
-                ? ((a.matchResultText.style.fill = "#00ff88"),
-                    (a.matchResultText.text = "YOU WIN"))
-                : 1 == projectInfo.mode && "p2" == a.winner
-                ? ((a.matchResultText.style.fill = "#ff4444"),
-                    (a.matchResultText.text = "YOU LOSE"))
-                : 2 == projectInfo.mode
-                ? ((a.matchResultText.style.fill = "#ffffff"),
-                    (a.matchResultText.text =
-                    "p1" == a.winner ? "Player 1 Wins!" : "Player 2 Wins!"))
-                : void 0,
-            (a.quitButton2.visible = !1),
-            (a.replayButton.visible = !1));
-        if ("p1" == a.winner && 1 == projectInfo.mode) Sound.Play("cheer", 1);
-        var t = function () {
-            ((a.quitButton2.visible = !0),
-                (a.replayButton.visible = !0),
-                (a.quitButton2.input.enabled = !0),
-                (a.replayButton.input.enabled = !0));
-        };
-        game.time.events.add(2e3, function () { m().then(t, t); }, this);
+        var matchOver = (projectInfo.p1Wins >= winsNeeded) || (projectInfo.p2Wins >= winsNeeded);
+
+        if (matchOver) {
+            // Match is over - show final result
+            window.famobi_analytics.trackScreen("SCREEN_LEVELRESULT");
+            (a.gameOverPanel.visible = !0);
+            if ("p1" == a.winner && 1 == projectInfo.mode)
+                (a.playerWin.visible = !0);
+            if ("p2" == a.winner && 1 == projectInfo.mode)
+                ((a.aiWin.visible = !0), (projectInfo.score = 0));
+            if (2 == projectInfo.mode) {
+                ((a.p1Icon.visible = !0), (a.p2Icon.visible = !0));
+                var iconY = -100;
+                ("p1" == a.winner
+                    ? ((a.p2Icon.rosette.visible = !1),
+                        (a.p2Icon.scale = new Phaser.Point(0.4, 0.4)),
+                        (a.p2Icon.y = iconY + 12.8),
+                        (a.p1Icon.y = iconY))
+                    : ((a.p1Icon.rosette.visible = !1),
+                        (a.p1Icon.scale = new Phaser.Point(0.4, 0.4)),
+                        (a.p2Icon.y = iconY),
+                        (a.p1Icon.y = iconY + 12.8)));
+                (a.gameOverWindow.visible = !1),
+                    (a.GOscoreIcon.visible = !1),
+                    (a.GOhighScoreIcon.visible = !1),
+                    (a.gameOverPanel.text1.visible = !1),
+                    (a.gameOverPanel.text2.visible = !1);
+            }
+            (a.gameOverPanel.text1.text = String(projectInfo.p1Wins)),
+                (a.gameOverPanel.text2.text = String(projectInfo.p2Wins)),
+                (a.GOaiLevel.visible = !1),
+                (a.GOclockIcon.visible = !1),
+                (a.gameOverPanel.text3.visible = !1),
+                (a.gameOverPanel.text4.visible = !1);
+            ((a.quitButton2.visible = !1), (a.replayButton.visible = !1));
+            var showButtons = function () {
+                ((a.quitButton2.visible = !0),
+                    (a.replayButton.visible = !0),
+                    (a.quitButton2.input.enabled = !0),
+                    (a.replayButton.input.enabled = !0));
+            };
+            game.time.events.add(2e3, function () {
+                m().then(showButtons, showButtons);
+            }, this);
+        } else {
+            // Match continues - auto restart next game after delay
+            Sound.Play("cheer", 0.5);
+            game.time.events.add(2e3, function () {
+                h();
+            }, this);
+        }
     }
     function u() {
         a.GOclockIcon.visible = !0;
@@ -862,10 +867,14 @@ playState.update = function () {
         );
     }
     function h() {
-        ((projectInfo.lastBreaker = a.turn), game.state.start("play"));
+        ((projectInfo.lastBreaker = a.turn),
+            // Reset match scores if match was over
+            (projectInfo.p1Wins >= (projectInfo.winsNeeded || 5) ||
+                projectInfo.p2Wins >= (projectInfo.winsNeeded || 5)) &&
+            ((projectInfo.p1Wins = 0), (projectInfo.p2Wins = 0)),
+            game.state.start("play"));
     }
     function v() {
-        (a.turnFrameCount = 0),
         (game.device.touch && ((a.powerBarMask.x = 0), (a.powerBarMask.y = 0)),
             (a.cueSet = !1),
             (a.lockAim = !1),
@@ -875,7 +884,7 @@ playState.update = function () {
             (a.cueTweenComplete = !1),
             (0 != a.ballPotted && 1 != a.fouled) ||
             ((a.multiplier = 1),
-                (a.multiplierText.text = "x" + a.multiplier)),
+                a.multiplierText && (a.multiplierText.text = "x" + a.multiplier)),
             (a.ballPotted = !1),
             (a.fouled = !1),
             (a.firstTouch = !1),
@@ -897,7 +906,7 @@ playState.update = function () {
             ((a.ballArray[e].lastCollisionObject = null),
                 (a.ballArray[e].firstContact = !1),
                 (a.ballArray[e].contactArray = new Array()));
-        if ("p1" == a.turn || 2 == projectInfo.mode || 3 == projectInfo.mode) {
+        if ("p1" == a.turn || 2 == projectInfo.mode) {
             if (
                 ((a.ballArray[0].mc.visible = !0),
                     1 == a.cueBallInHand &&
@@ -930,12 +939,9 @@ playState.update = function () {
                     function e() {
                         for (var t = 1; t < a.ballArray.length; t++) {
                             var i = a.ballArray[t];
-                            if (1 != i.active) continue;
-                            var anim = i.marker.animations.getAnimation("markerAnim");
-                            if (!anim || !anim._frames || anim._frames.length === 0) continue;
                             ((i.marker.alpha = 1),
-                                i.marker.animations.stop(),
-                                i.marker.animations.play("markerAnim", 40, !0));
+                                i.marker.animations.stop(1),
+                                i.marker.animations.play("markerAnim", 40, !1));
                         }
                         a.markerRepeat = game.time.events.add(
                             5 * Phaser.Timer.SECOND,
@@ -1127,6 +1133,35 @@ playState.update = function () {
                         (a.cueTweenComplete = !0));
                 }, this),
                 (a.cueTweenComplete = !1));
+        }
+    }
+    function C() {
+        if (1 == a.trial) return;
+        var minX = -3e4 * a.adjustmentScale + a.ballRadius + 5,
+            maxX = 3e4 * a.adjustmentScale - a.ballRadius - 5,
+            minY = -15e3 * a.adjustmentScale + a.ballRadius + 5,
+            maxY = 15e3 * a.adjustmentScale - a.ballRadius - 5,
+            hardMinX = minX - 2 * a.ballRadius,
+            hardMaxX = maxX + 2 * a.ballRadius,
+            hardMinY = minY - 2 * a.ballRadius,
+            hardMaxY = maxY + 2 * a.ballRadius;
+        for (var bi = 1; bi < a.ballArray.length; bi++) {
+            var ball = a.ballArray[bi];
+            if (1 == ball.active) {
+                var corrected = !1;
+                if (ball.position.x < hardMinX || ball.position.x > hardMaxX) corrected = !0;
+                if (ball.position.y < hardMinY || ball.position.y > hardMaxY) corrected = !0;
+                if (corrected) {
+                    ball.position.x < minX && ((ball.position.x = minX), (ball.velocity.x = Math.abs(ball.velocity.x) * 0.7));
+                    ball.position.x > maxX && ((ball.position.x = maxX), (ball.velocity.x = -Math.abs(ball.velocity.x) * 0.7));
+                    ball.position.y < minY && ((ball.position.y = minY), (ball.velocity.y = Math.abs(ball.velocity.y) * 0.7));
+                    ball.position.y > maxY && ((ball.position.y = maxY), (ball.velocity.y = -Math.abs(ball.velocity.y) * 0.7));
+                    if (ball.velocity.magnitude < 20) {
+                        var towardCenter = new Vector2D(-ball.position.x, -ball.position.y).normalize();
+                        ball.velocity = towardCenter.times(120);
+                    }
+                }
+            }
         }
     }
     (1 == a.gameRunning &&
@@ -2079,7 +2114,7 @@ playState.update = function () {
                                 var c = a.pocketArray[p];
                                 if (1 == f(s, c)) {
                                     var u = new Object();
-                                    ((u.ball = s), (u.pocket = c), r.push(u));
+                                    ((u.ball = o), (u.pocket = c), r.push(u));
                                 }
                             }
                         var d = !1;
@@ -2157,11 +2192,14 @@ playState.update = function () {
                             ((a.trial = !0),
                                 (a.shotRating = 0),
                                 (a.testNumber = 0),
-                                (a.storeBallArray = new Array()));
+                                (a.storeBallArray = new Array()),
+                                (a.storeShotNum = a.shotNum)),
+                                a.storeRequiredBallId = a.requiredBallId;
                             for (var e = 0; e < a.ballArray.length; e++) {
                                 var t = a.ballArray[e],
                                     i = new Object();
-                                ((i.position = t.position),
+                                ((i.position = new Vector2D(t.position.x, t.position.y)),
+                                    (i.velocity = new Vector2D(t.velocity.x, t.velocity.y)),
                                     (i.active = t.active),
                                     a.storeBallArray.push(i));
                             }
@@ -2304,10 +2342,21 @@ playState.update = function () {
                         ) {
                             a.shotRating = 0;
                             var e = a.shotTrialArray[a.testNumber];
+                            for (var ci = 0; ci < a.ballArray.length; ci++)
+                                ((a.ballArray[ci].contactArray = new Array()),
+                                    (a.ballArray[ci].firstContact = !1),
+                                    (a.ballArray[ci].lastCollisionObject = null));
+                            (a.shotNum = a.storeShotNum), (a.shotComplete = !1),
+                                a.requiredBallId = a.storeRequiredBallId;
                             x(e.x, e.y, 0, 0);
-                            do {
-                                (a.phys.updatePhysics(), l());
-                            } while (1 == a.shotRunning);
+                            for (var simSteps = 0, simStepLimit = 3000; 1 == a.shotRunning && simSteps < simStepLimit;) {
+                                (a.phys.updatePhysics(), l(), simSteps++);
+                            }
+                            if (1 == a.shotRunning) {
+                                a.shotRunning = !1;
+                                a.shotComplete = !0;
+                                window.famobi.log("AI trial simulation reached step limit and was forced to stop");
+                            }
                             (s(),
                                 a.shotRating > a.bestShot &&
                                 ((a.bestShot = a.shotRating),
@@ -2315,9 +2364,15 @@ playState.update = function () {
                                 (function (e) {
                                     for (var t = 0; t < a.ballArray.length; t++) {
                                         var i = a.ballArray[t];
-                                        ((i.position = e[t].position),
-                                            (i.active = e[t].active));
+                                        ((i.position = new Vector2D(e[t].position.x, e[t].position.y)),
+                                            (i.velocity = new Vector2D(e[t].velocity.x, e[t].velocity.y)),
+                                            (i.active = e[t].active),
+                                            (i.contactArray = new Array()),
+                                            (i.firstContact = !1),
+                                            (i.lastCollisionObject = null));
                                     }
+                                    (a.shotNum = a.storeShotNum), (a.shotComplete = !1);
+                                    a.requiredBallId = a.storeRequiredBallId;
                                 })(a.storeBallArray),
                                 a.testNumber++,
                                 a.shotInfo.calculated &&
@@ -2341,6 +2396,12 @@ playState.update = function () {
                                     );
                                     var t = game.add.tween(a.cueCanvas);
                                     function i() {
+                                        for (var e = 0; e < a.ballArray.length; e++)
+                                            ((a.ballArray[e].contactArray = new Array()),
+                                                (a.ballArray[e].firstContact = !1),
+                                                (a.ballArray[e].lastCollisionObject = null));
+                                        (a.shotNum = a.storeShotNum), (a.shotComplete = !1);
+                                        a.requiredBallId = a.storeRequiredBallId;
                                         x(
                                             a.shotInfo.aimVector.x,
                                             a.shotInfo.aimVector.y,
@@ -2415,7 +2476,8 @@ playState.update = function () {
                 a.phys.updatePhysics(),
                 renderScreen()),
             0 == projectInfo.levelComplete &&
-            (1 == projectInfo.mode && "p1" == a.turn && updateTimer()),
+            (a.scoreText && (a.scoreText.text = projectInfo.score),
+                1 == projectInfo.mode && "p1" == a.turn && updateTimer()),
             (a.debugText.text = game.time.fps),
             1 == a.gameOver &&
             1 == a.foulDisplayComplete &&
@@ -2837,33 +2899,6 @@ playState.update = function () {
             (a.foulDisplayComplete = !0),
             0 == a.rerack && (a.gameRunning = !0),
             p()),
-        (function () {
-            if (!a.p1TimerBar || !a.p2TimerBar) return;
-            if (3 == projectInfo.mode) { a.p1TimerBar.clear(); a.p2TimerBar.clear(); return; }
-            var limit = a.turnTimeLimit || 1800;
-            var isP1Turn = "p1" == a.turn;
-            var canAim = 1 == a.gameRunning && 0 == a.shotRunning && 0 == a.gameOver;
-            if (canAim) a.turnFrameCount = (a.turnFrameCount || 0) + 1;
-            var ratio = Math.max(0, 1 - (a.turnFrameCount || 0) / limit);
-            var bh = 10;
-            function drawBar(g, bx, by, bw, r, isTurn) {
-                g.clear();
-                g.beginFill(0x222233, 0.9);
-                g.drawRoundedRect(bx, by, bw, bh, 4);
-                g.endFill();
-                var fillW = isTurn ? bw * r : bw;
-                var col = isTurn
-                    ? (r > 0.5 ? 0x00dd55 : r > 0.25 ? 0xffaa00 : 0xff3300)
-                    : 0x555566;
-                if (fillW > 2) {
-                    g.beginFill(col, isTurn ? 1 : 0.5);
-                    g.drawRoundedRect(bx, by, fillW, bh, 4);
-                    g.endFill();
-                }
-            }
-            drawBar(a.p1TimerBar, a.p1BarX || 120, a.p1BarY || 0, a.p1BarW || 80, ratio, isP1Turn);
-            drawBar(a.p2TimerBar, a.p2BarX || 0, a.p2BarY || 0, a.p2BarW || 80, ratio, !isP1Turn);
-        })(),
         (window.FORCE_LOSE = (e = !0) => {
             c(e);
         }));
