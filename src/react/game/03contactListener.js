@@ -46,40 +46,7 @@ function awardBonuses(e) {
         (t.numBalls--,
             t.pottedBallArray.push(e.ball.id),
             checkLevelComplete(),
-            (t.ballPotted = !0),
-            1 == projectInfo.mode &&
-                "p1" == t.turn &&
-                (createBonusText(
-                    0,
-                    String(10 * t.multiplier),
-                    "font6",
-                    o.dropPosition.x * t.physScale,
-                    o.dropPosition.y * t.physScale,
-                    56,
-                    !1,
-                ),
-                game.time.events.add(
-                    1.5 * Phaser.Timer.SECOND,
-                    function () {
-                        if (
-                            ((projectInfo.score += 10 * t.multiplier),
-                            projectInfo.score > t.bestScore)
-                        ) {
-                            t.bestScore = projectInfo.score;
-                            try {
-                                window.famobi.localStorage.setItem(
-                                    "bestScore",
-                                    t.bestScore,
-                                );
-                            } catch (e) {}
-                        }
-                        (t.multiplier++,
-                            (t.multiplierText.text = "x" + t.multiplier));
-                        var e = game.add.tween(t.multiplierText);
-                        (e.from({ size: 42 }, 2e3), e.start());
-                    },
-                    this,
-                )));
+            (t.ballPotted = !0));
     } else t.fouled = !0;
 }
 function checkLevelComplete() {

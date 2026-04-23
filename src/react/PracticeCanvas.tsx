@@ -90,7 +90,7 @@ export function PracticeCanvas() {
                 tutorialPlayed: true,
                 clickedHelpButton: false,
                 guideOn: 1,
-                lastBreaker: 'none',
+                lastBreaker: 'p2',
                 score: 0,
                 bestScore: 0,
                 bestTime: 0,

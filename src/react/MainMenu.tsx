@@ -1,6 +1,7 @@
 import { Music, Gamepad2, Users, Zap, CircleHelp } from "lucide-react";
 import { useNavigate } from "react-router";
 import { GameLayout, UserPill } from "./GameLayout";
+import { useBgm } from "../App";
 
 const menuItems = [
   { label: "Chơi với máy", icon: Gamepad2, path: "/choose-mode", mode: "vs-ai" as const },
@@ -11,16 +12,34 @@ const menuItems = [
 
 export function MainMenu() {
   const navigate = useNavigate();
+  const { muted, toggle } = useBgm();
 
   return (
     <GameLayout>
       {/* Top bar */}
       <div className="relative z-20 flex items-center justify-between px-5 pt-4">
         <button
-          className="text-white/25 hover:text-white/60 cursor-pointer"
-          style={{ transition: "all 200ms ease-in-out" }}
+          onClick={toggle}
+          title={muted ? "Bật nhạc nền" : "Tắt nhạc nền"}
+          className="cursor-pointer"
+          style={{
+            color: muted ? "rgba(255,255,255,0.25)" : "#FF9100",
+            transition: "all 200ms ease-in-out",
+          }}
         >
-          <Music size={18} strokeWidth={1.5} />
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Music size={18} strokeWidth={1.5} />
+            {muted && (
+              <span style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%) rotate(-45deg)',
+                width: '22px', height: '1.5px',
+                background: 'rgba(255,255,255,0.5)',
+                borderRadius: '1px',
+                pointerEvents: 'none',
+              }} />
+            )}
+          </span>
         </button>
         <UserPill />
       </div>
