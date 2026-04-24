@@ -4,10 +4,20 @@ playState.update = function () {
         t = a.turn;
     if (3 == projectInfo.mode && !a.__practiceAPISetup) {
         a.__practiceAPISetup = !0;
+        a.cueBallInHand = !1;
         window.practiceAPI = {
             placeBall: function (id, physX, physY) {
                 var ball = a.ballArray[id];
                 if (!ball) return;
+                if (!ball.mc.parent || ball.mc.parent !== a.ballCanvas) a.ballCanvas.addChild(ball.mc);
+                if (!ball.shadow) {
+                    ball.shadow = new Phaser.Sprite(game, 0, 0, "shadow");
+                    a.shadowCanvas.add(ball.shadow);
+                    ball.shadow.anchor = new Point(0.5, 0.5);
+                    ball.shadow.width = a.ballRadius * a.physScale * 4;
+                    ball.shadow.height = a.ballRadius * a.physScale * 4;
+                    ball.shadow.alpha = 0.7;
+                }
                 (ball.active = !0), (ball.mc.visible = !0), (ball.shadow.visible = !0),
                 (ball.velocity = new Vector2D(0, 0)), (ball.pocketTweenComplete = !0),
                 (ball.position.x = physX), (ball.position.y = physY);
@@ -29,26 +39,88 @@ playState.update = function () {
                 for (var id = 1; id <= 9; id++) {
                     var ball = a.ballArray[id];
                     if (!ball || !pos[id]) continue;
+                    if (!ball.shadow) {
+                        ball.shadow = new Phaser.Sprite(game, 0, 0, "shadow");
+                        a.shadowCanvas.add(ball.shadow);
+                        ball.shadow.anchor = new Point(0.5, 0.5);
+                        ball.shadow.width = a.ballRadius * a.physScale * 4;
+                        ball.shadow.height = a.ballRadius * a.physScale * 4;
+                        ball.shadow.alpha = 0.7;
+                    }
+                    if (ball.mc.parent !== a.ballCanvas) {
+                        if (ball.mc.parent) ball.mc.parent.removeChild(ball.mc);
+                        a.ballCanvas.addChild(ball.mc);
+                    }
                     (ball.active = !0), (ball.mc.visible = !0), (ball.shadow.visible = !0),
                     (ball.velocity = new Vector2D(0, 0)), (ball.pocketTweenComplete = !0),
                     (ball.position.x = pos[id].x), (ball.position.y = pos[id].y);
                 }
                 var b0 = a.ballArray[0];
+                if (b0.mc.parent !== a.ballCanvas) {
+                    if (b0.mc.parent) b0.mc.parent.removeChild(b0.mc);
+                    a.ballCanvas.addChild(b0.mc);
+                }
+                (b0.active = !0), (b0.mc.visible = !0), (b0.shadow.visible = !0);
                 (b0.position.x = -ri), (b0.position.y = 0), (b0.velocity = new Vector2D(0, 0));
+                (b0.pocketTweenComplete = !0);
+                (a.shotRunning = !1), (a.shotComplete = !1), (a.rulingsApplied = !0);
+                (a.cueBallInHand = !1), (a.cueSet = !1), (a.shotReset = !0);
+                (a.beginStrike = !1), (a.settingPower = !1), (a.cueTweenComplete = !1);
+                (a.drawGuide = !0), (a.preventAim = !1), (a.preventSetPower = !1), (a.preventUpdateCue = !1);
+                (a.rerack = !1), (a.shotNum = 0), (a.initVars = !1);
+                game.tweens.removeFrom(a.cueCanvas);
+                game.tweens.removeFrom(a.cue);
+                game.tweens.removeFrom(a.cueShadow);
+                (a.cueCanvas.x = b0.position.x * a.physScale), (a.cueCanvas.y = b0.position.y * a.physScale);
+                (a.cueCanvas.visible = !0), (a.cueCanvas.alpha = 1);
+                n(); o();
                 renderScreen();
             },
             resetTable: function () {
                 var ri = 15e3 * a.adjustmentScale, re = 1.782 * a.ballRadius;
                 for (var id = 1; id <= 8; id++) {
                     var ball = a.ballArray[id];
-                    if (ball) (ball.active = !1), (ball.mc.visible = !1), (ball.shadow.visible = !1);
+                    if (ball) {
+                        (ball.active = !1), (ball.mc.visible = !1);
+                        if (ball.shadow) ball.shadow.visible = !1;
+                        (ball.velocity = new Vector2D(0, 0)), (ball.pocketTweenComplete = !0);
+                    }
                 }
                 var b9 = a.ballArray[9];
+                if (!b9.shadow) {
+                    b9.shadow = new Phaser.Sprite(game, 0, 0, "shadow");
+                    a.shadowCanvas.add(b9.shadow);
+                    b9.shadow.anchor = new Point(0.5, 0.5);
+                    b9.shadow.width = a.ballRadius * a.physScale * 4;
+                    b9.shadow.height = a.ballRadius * a.physScale * 4;
+                    b9.shadow.alpha = 0.7;
+                }
+                if (b9.mc.parent !== a.ballCanvas) {
+                    if (b9.mc.parent) b9.mc.parent.removeChild(b9.mc);
+                    a.ballCanvas.addChild(b9.mc);
+                }
                 (b9.active = !0), (b9.mc.visible = !0), (b9.shadow.visible = !0),
                 (b9.velocity = new Vector2D(0, 0)), (b9.pocketTweenComplete = !0),
                 (b9.position.x = ri + 2 * re), (b9.position.y = 0);
                 var b0 = a.ballArray[0];
+                if (b0.mc.parent !== a.ballCanvas) {
+                    if (b0.mc.parent) b0.mc.parent.removeChild(b0.mc);
+                    a.ballCanvas.addChild(b0.mc);
+                }
+                (b0.active = !0), (b0.mc.visible = !0), (b0.shadow.visible = !0);
                 (b0.position.x = -ri), (b0.position.y = 0), (b0.velocity = new Vector2D(0, 0));
+                (b0.pocketTweenComplete = !0);
+                (a.shotRunning = !1), (a.shotComplete = !1), (a.rulingsApplied = !0);
+                (a.cueBallInHand = !1), (a.cueSet = !1), (a.shotReset = !0);
+                (a.beginStrike = !1), (a.settingPower = !1), (a.cueTweenComplete = !1);
+                (a.drawGuide = !0), (a.preventAim = !1), (a.preventSetPower = !1), (a.preventUpdateCue = !1);
+                (a.rerack = !1), (a.shotNum = 0), (a.initVars = !1);
+                game.tweens.removeFrom(a.cueCanvas);
+                game.tweens.removeFrom(a.cue);
+                game.tweens.removeFrom(a.cueShadow);
+                (a.cueCanvas.x = b0.position.x * a.physScale), (a.cueCanvas.y = b0.position.y * a.physScale);
+                (a.cueCanvas.visible = !0), (a.cueCanvas.alpha = 1);
+                n(); o();
                 renderScreen();
             },
             getBallsOnTable: function () {
@@ -86,6 +158,7 @@ playState.update = function () {
             0 == a.preventUpdateCue &&
             0 == a.trial &&
             ((a.cueSet = !0),
+                (a.cueCanvas.alpha = 1),
                 (a.cueCanvas.visible = !0),
                 (a.cueCanvas.x = a.ballArray[0].position.x * a.physScale),
                 (a.cueCanvas.y = a.ballArray[0].position.y * a.physScale),
@@ -451,7 +524,7 @@ playState.update = function () {
                         ((a.ballsPottedSameType = !1), (a.typesPotted = ""));
                 })(),
                 (function () {
-                    if (0 == a.ballsPotted && 0 == a.fouled)
+                    if (0 == a.ballsPotted && 0 == a.fouled && 3 != projectInfo.mode)
                         if (1 == a.shotNum) {
                             for (
                                 var e = !1, t = 0, i = 1;
@@ -518,18 +591,19 @@ playState.update = function () {
                 })(),
                 3 == projectInfo.mode
                 ? (function () {
-                    var b9 = a.ballArray[9];
-                    if (b9 && !b9.active) {
-                        var _ri = 15e3 * a.adjustmentScale, _re = 1.782 * a.ballRadius;
-                        (b9.active = !0), (b9.velocity = new Vector2D(0, 0)), (b9.pocketTweenComplete = !0),
-                        (b9.position.x = _ri + 2 * _re), (b9.position.y = 0),
-                        (b9.mc.visible = !0), (b9.shadow.visible = !0);
-                        b9.mc.parent != a.ballCanvas && a.ballCanvas.addChild(b9.mc);
-                    }
                     var b0 = a.ballArray[0];
-                    if (!b0.active)
-                        (a.cueBallInHand = !0), (b0.active = !0), (b0.mc.visible = !0), (b0.shadow.visible = !0);
-                    (a.fouled = !1), (a.gameRunning = 1), v();
+                    if (!b0.active) {
+                        (a.cueBallInHand = !0);
+                        (b0.active = !0);
+                        (b0.velocity = new Vector2D(0, 0));
+                        (b0.pocketTweenComplete = !0);
+                        (b0.mc.visible = !0);
+                        (b0.shadow.visible = !0);
+                        b0.mc.parent != a.ballCanvas && a.ballCanvas.addChild(b0.mc);
+                    }
+                    (a.fouled = !1), (a.gameRunning = 1);
+                    (a.rerack = !1);
+                    v(); n(); o();
                 })()
                 : "practice" != a.mode &&
                 (1 == a.fouled
@@ -662,9 +736,7 @@ playState.update = function () {
     function p() {
         if (1 == a.gameRunning) {
             if ("practice" == a.mode) {
-                for (var e = !1, t = 1; t < a.ballArray.length; t++)
-                    1 == a.ballArray[t].active && (e = !0);
-                0 == e && (a.gameOver = !0);
+                // practice mode: never ends — player can always drag balls back from tray
             }
             0 == a.gameOver &&
                 (0 == a.trial &&
@@ -897,11 +969,13 @@ playState.update = function () {
             (a.settingPower = !1),
             0 == a.trial &&
             ((a.foundCalculatedShots = !1), (a.foundRandomShots = !1)));
-        for (var lowestIdAtTurnStart = 99, li = 1; li < a.ballArray.length; li++)
-            1 == a.ballArray[li].active &&
-                a.ballArray[li].id < lowestIdAtTurnStart &&
-                (lowestIdAtTurnStart = a.ballArray[li].id);
-        a.requiredBallId = lowestIdAtTurnStart <= 9 ? lowestIdAtTurnStart : 0;
+        if (0 == a.trial) {
+            for (var lowestIdAtTurnStart = 99, li = 1; li < a.ballArray.length; li++)
+                1 == a.ballArray[li].active &&
+                    a.ballArray[li].id < lowestIdAtTurnStart &&
+                    (lowestIdAtTurnStart = a.ballArray[li].id);
+            a.requiredBallId = lowestIdAtTurnStart <= 9 ? lowestIdAtTurnStart : 0;
+        }
         for (var e = 0; e < a.ballArray.length; e++)
             ((a.ballArray[e].lastCollisionObject = null),
                 (a.ballArray[e].firstContact = !1),
@@ -968,8 +1042,8 @@ playState.update = function () {
             ("p2" == a.turn &&
                 1 == projectInfo.mode &&
                 ((a.power = 4e3), a.cueBallInHand),
-                ("p1" == a.turn || 2 == projectInfo.mode) &&
-                game.device.touch &&
+                ("p1" == a.turn || 2 == projectInfo.mode || 3 == projectInfo.mode) &&
+                (game.device.touch || 3 == projectInfo.mode) &&
                 0 == a.cueBallInHand)
         ) {
             n();
